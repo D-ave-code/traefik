@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  flask:
+    image: flask:1.0.0
+    #ports:
+     # - "5000:5000"
+    deploy:
+      replicas: 4
+    depends_on:
+      proxy:
+        condition: service_started
+    expose:
+      - 7001
+    command: "flask run --port 7001 --host 0.0.0.0"
+    labels:
+      - "traefik.http.routers.flask.rule=PathPrefix(`/app1`)"
+      - "traefik.http.middlewares.flask.stripprefix.prefixes=/app1"
+      - "traefik.http.routers.flask.middlewares=flask"
+  fastapi:
+    image: fastapi:1.0.0
+    #ports:
+     # - "5000:5000"
+    deploy:
+      replicas: 2
+    depends_on:
+      proxy:
+        condition: service_started
+    expose:
+      - 7002
+    command: "uvicorn app.main:app --host 0.0.0.0 --port 7002"
+    labels:
+      - "traefik.http.routers.fastapi.rule=PathPrefix(`/app2`)"
+      - "traefik.http.middlewares.fastapi.stripprefix.prefixes=/app2"
+      - "traefik.http.routers.fastapi.middlewares=fastapi"
+  proxy:
+    image: traefik:v2.9.6
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock 
